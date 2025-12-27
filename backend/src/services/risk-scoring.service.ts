@@ -1,4 +1,7 @@
-import { type RiskRegisterItem } from '../db/schema';
+import { riskRegisterItems } from '../db/schema';
+
+// Infer type from schema
+type RiskRegisterItem = typeof riskRegisterItems.$inferSelect;
 
 export interface RiskFactor {
   riskIdCode: string;
