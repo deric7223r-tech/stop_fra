@@ -20,7 +20,7 @@ export interface CreateAssessmentInput {
 
 export interface UpdateAssessmentInput {
   answers?: Record<string, any>;
-  status?: 'draft' | 'in_progress' | 'submitted' | 'completed' | 'archived';
+  status?: 'draft' | 'submitted' | 'paid' | 'signed' | 'completed';
 }
 
 export interface SubmitAssessmentInput {
@@ -117,8 +117,8 @@ export class AssessmentService {
       throw new Error('ASSESSMENT_NOT_FOUND');
     }
 
-    // Don't allow updates to completed or archived assessments
-    if (['completed', 'archived'].includes(assessment.status)) {
+    // Don't allow updates to completed or signed assessments
+    if (['completed', 'signed'].includes(assessment.status)) {
       throw new Error('ASSESSMENT_LOCKED');
     }
 
@@ -135,11 +135,6 @@ export class AssessmentService {
     if (input.answers) {
       // Store or update answers
       await this.saveAssessmentAnswers(assessmentId, input.answers);
-
-      // If status is moving to in_progress, update it
-      if (assessment.status === 'draft') {
-        updateData.status = 'in_progress';
-      }
     }
 
     const [updatedAssessment] = await db
@@ -158,8 +153,8 @@ export class AssessmentService {
     assessmentId: string,
     answers: Record<string, any>
   ): Promise<void> {
-    // Store each module's answers separately
-    for (const [module, moduleAnswers] of Object.entries(answers)) {
+    // Store each section's answers separately
+    for (const [section, sectionAnswers] of Object.entries(answers)) {
       // Check if answer already exists
       const [existing] = await db
         .select()
@@ -167,7 +162,7 @@ export class AssessmentService {
         .where(
           and(
             eq(assessmentAnswers.assessmentId, assessmentId),
-            eq(assessmentAnswers.moduleKey, module)
+            eq(assessmentAnswers.section, section)
           )
         )
         .limit(1);
@@ -177,16 +172,16 @@ export class AssessmentService {
         await db
           .update(assessmentAnswers)
           .set({
-            answers: moduleAnswers,
+            answers: sectionAnswers,
             updatedAt: new Date(),
           })
-          .where(eq(assessmentAnswers.answerGroupId, existing.answerGroupId));
+          .where(eq(assessmentAnswers.answerId, existing.answerId));
       } else {
         // Insert new answer
         await db.insert(assessmentAnswers).values({
           assessmentId,
-          moduleKey: module,
-          answers: moduleAnswers,
+          section,
+          answers: sectionAnswers,
         });
       }
     }
@@ -204,7 +199,7 @@ export class AssessmentService {
     // Convert to object format
     const result: Record<string, any> = {};
     for (const answer of answers) {
-      result[answer.moduleKey] = answer.answers;
+      result[answer.section] = answer.answers;
     }
 
     return result;
@@ -300,11 +295,10 @@ export class AssessmentService {
       throw new Error('ASSESSMENT_NOT_FOUND');
     }
 
-    // Soft delete by updating status
+    // Soft delete by setting deletedAt timestamp
     await db
       .update(assessments)
       .set({
-        status: 'archived',
         deletedAt: new Date(),
         updatedAt: new Date(),
       })

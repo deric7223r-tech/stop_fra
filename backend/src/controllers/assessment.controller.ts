@@ -8,7 +8,7 @@ const createAssessmentSchema = z.object({
 
 const updateAssessmentSchema = z.object({
   answers: z.record(z.any()).optional(),
-  status: z.enum(['draft', 'in_progress', 'submitted', 'completed', 'archived']).optional(),
+  status: z.enum(['draft', 'submitted', 'paid', 'signed', 'completed']).optional(),
 });
 
 const submitAssessmentSchema = z.object({
