@@ -1,7 +1,10 @@
 import { eq, and, sql } from 'drizzle-orm';
 import { db } from '../db';
-import { keypasses, organisations, employeeAssessments, type Keypass } from '../db/schema';
+import { keypasses, organisations, employeeAssessments } from '../db/schema';
 import crypto from 'crypto';
+
+// Infer type from schema
+type Keypass = typeof keypasses.$inferSelect;
 
 export interface AllocateKeypassesInput {
   organisationId: string;

@@ -1,8 +1,12 @@
 import Stripe from 'stripe';
 import { eq } from 'drizzle-orm';
 import { db } from '../db';
-import { purchases, packages, organisations, type Purchase, type Package } from '../db/schema';
+import { purchases, packages, organisations } from '../db/schema';
 import { KeypassService } from './keypass.service';
+
+// Infer types from schema
+type Purchase = typeof purchases.$inferSelect;
+type Package = typeof packages.$inferSelect;
 
 export interface CreatePurchaseInput {
   organisationId: string;

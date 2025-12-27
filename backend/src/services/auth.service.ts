@@ -18,8 +18,8 @@ export interface AuthTokens {
 export class AuthService {
   private readonly ACCESS_TOKEN_SECRET = process.env.JWT_SECRET!;
   private readonly REFRESH_TOKEN_SECRET = process.env.JWT_REFRESH_SECRET!;
-  private readonly ACCESS_TOKEN_EXPIRY = process.env.JWT_EXPIRES_IN || '24h';
-  private readonly REFRESH_TOKEN_EXPIRY = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
+  private readonly ACCESS_TOKEN_EXPIRY: string = process.env.JWT_EXPIRES_IN || '24h';
+  private readonly REFRESH_TOKEN_EXPIRY: string = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
   private readonly SALT_ROUNDS = 12;
 
   /**

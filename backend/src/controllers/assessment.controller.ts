@@ -50,7 +50,7 @@ export class AssessmentController {
 
       const assessment = await this.assessmentService.createAssessment({
         organisationId: validated.organisationId,
-        assessedBy: user.userId,
+        createdByUserId: user.userId,
       });
 
       return c.json(

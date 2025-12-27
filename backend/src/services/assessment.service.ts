@@ -5,15 +5,17 @@ import {
   assessmentAnswers,
   riskRegisterItems,
   organisations,
-  type Assessment,
-  type AssessmentAnswer,
-  type RiskRegisterItem,
 } from '../db/schema';
 import { RiskScoringService } from './risk-scoring.service';
 
+// Infer types from schema
+type Assessment = typeof assessments.$inferSelect;
+type AssessmentAnswer = typeof assessmentAnswers.$inferSelect;
+type RiskRegisterItem = typeof riskRegisterItems.$inferSelect;
+
 export interface CreateAssessmentInput {
   organisationId: string;
-  assessedBy: string;
+  createdByUserId: string;
 }
 
 export interface UpdateAssessmentInput {
@@ -40,7 +42,7 @@ export class AssessmentService {
       .insert(assessments)
       .values({
         organisationId: input.organisationId,
-        assessedBy: input.assessedBy,
+        createdByUserId: input.createdByUserId,
         status: 'draft',
       })
       .returning();
