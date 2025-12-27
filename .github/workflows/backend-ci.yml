@@ -1,0 +1,266 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+
+jobs:
+  test:
+    name: Test Backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: stopfra_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    strategy:
+      matrix:
+        node-version: [20.x]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Run type check
+        working-directory: backend
+        run: npx tsc --noEmit
+
+      - name: Run linter
+        working-directory: backend
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Run database migrations
+        working-directory: backend
+        run: npm run db:migrate
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/stopfra_test
+          JWT_SECRET: test-jwt-secret-key-for-ci-only
+          JWT_REFRESH_SECRET: test-jwt-refresh-secret-for-ci-only
+          NODE_ENV: test
+
+      - name: Run tests
+        working-directory: backend
+        run: npm test -- --ci --coverage --maxWorkers=2
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/stopfra_test
+          JWT_SECRET: test-jwt-secret-key-for-ci-only
+          JWT_REFRESH_SECRET: test-jwt-refresh-secret-for-ci-only
+          NODE_ENV: test
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          files: ./backend/coverage/coverage-final.json
+          flags: backend
+          name: backend-coverage
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Run npm audit
+        working-directory: backend
+        run: npm audit --audit-level=moderate
+        continue-on-error: true
+
+      - name: Check for vulnerable dependencies
+        uses: snyk/actions/node@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --file=backend/package.json
+
+      - name: Run OWASP dependency check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'stop-fra-backend'
+          path: './backend'
+          format: 'HTML'
+        continue-on-error: true
+
+  build:
+    name: Build Backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [test]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: backend
+        run: npm ci --production
+
+      - name: Build TypeScript
+        working-directory: backend
+        run: npx tsc --project tsconfig.json
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-build
+          path: |
+            backend/dist
+            backend/package.json
+            backend/package-lock.json
+          retention-days: 7
+
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [build]
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: stopfra_integration
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Run database migrations
+        working-directory: backend
+        run: npm run db:migrate
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/stopfra_integration
+          JWT_SECRET: test-jwt-secret-key-for-ci-only
+          JWT_REFRESH_SECRET: test-jwt-refresh-secret-for-ci-only
+
+      - name: Start backend server
+        working-directory: backend
+        run: |
+          npm run dev &
+          echo $! > server.pid
+          sleep 5
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/stopfra_integration
+          JWT_SECRET: test-jwt-secret-key-for-ci-only
+          JWT_REFRESH_SECRET: test-jwt-refresh-secret-for-ci-only
+          PORT: 3000
+
+      - name: Wait for server to be ready
+        run: |
+          for i in {1..30}; do
+            if curl -f http://localhost:3000/health; then
+              echo "Server is ready"
+              exit 0
+            fi
+            echo "Waiting for server... ($i/30)"
+            sleep 2
+          done
+          echo "Server failed to start"
+          exit 1
+
+      - name: Run integration tests
+        working-directory: backend
+        run: npm run test:integration
+        env:
+          API_URL: http://localhost:3000
+
+      - name: Stop backend server
+        if: always()
+        run: |
+          if [ -f backend/server.pid ]; then
+            kill $(cat backend/server.pid) || true
+          fi
+
+  api-schema-validation:
+    name: API Schema Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Validate OpenAPI schema
+        run: |
+          if [ -f backend/openapi.yml ]; then
+            npx @stoplight/spectral-cli lint backend/openapi.yml
+          else
+            echo "⚠️  No OpenAPI schema found - skipping validation"
+          fi
+        continue-on-error: true

@@ -1,0 +1,194 @@
+name: Frontend CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'fraud-risk-app-main/**'
+      - '.github/workflows/frontend-ci.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'fraud-risk-app-main/**'
+      - '.github/workflows/frontend-ci.yml'
+
+jobs:
+  test:
+    name: Test Frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    strategy:
+      matrix:
+        node-version: [20.x]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: fraud-risk-app-main/package-lock.json
+
+      - name: Install dependencies
+        working-directory: fraud-risk-app-main
+        run: npm ci
+
+      - name: Run linter
+        working-directory: fraud-risk-app-main
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Run type check
+        working-directory: fraud-risk-app-main
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        working-directory: fraud-risk-app-main
+        run: npm test -- --ci --coverage --maxWorkers=2
+        env:
+          CI: true
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          files: ./fraud-risk-app-main/coverage/coverage-final.json
+          flags: frontend
+          name: frontend-coverage
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Comment test coverage on PR
+        if: github.event_name == 'pull_request'
+        uses: romeovs/lcov-reporter-action@v0.3.1
+        with:
+          lcov-file: ./fraud-risk-app-main/coverage/lcov.info
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          delete-old-comments: true
+
+  lint:
+    name: Lint & Format Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+          cache-dependency-path: fraud-risk-app-main/package-lock.json
+
+      - name: Install dependencies
+        working-directory: fraud-risk-app-main
+        run: npm ci
+
+      - name: Run ESLint
+        working-directory: fraud-risk-app-main
+        run: npm run lint -- --max-warnings=0
+
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Run npm audit
+        working-directory: fraud-risk-app-main
+        run: npm audit --audit-level=moderate
+        continue-on-error: true
+
+      - name: Check for vulnerable dependencies
+        uses: snyk/actions/node@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --file=fraud-risk-app-main/package.json
+
+  build:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [test, lint]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+          cache-dependency-path: fraud-risk-app-main/package-lock.json
+
+      - name: Install dependencies
+        working-directory: fraud-risk-app-main
+        run: npm ci
+
+      - name: Build web bundle
+        working-directory: fraud-risk-app-main
+        run: npx expo export:web
+        env:
+          NODE_ENV: production
+          EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: fraud-risk-app-main/dist
+          retention-days: 7
+
+  test-coverage-gate:
+    name: Coverage Gate
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+          cache-dependency-path: fraud-risk-app-main/package-lock.json
+
+      - name: Install dependencies
+        working-directory: fraud-risk-app-main
+        run: npm ci
+
+      - name: Generate coverage
+        working-directory: fraud-risk-app-main
+        run: npm test -- --ci --coverage --maxWorkers=2
+
+      - name: Check coverage threshold
+        working-directory: fraud-risk-app-main
+        run: |
+          COVERAGE=$(npx nyc report --reporter=text-summary | grep "Lines" | awk '{print $3}' | sed 's/%//')
+          echo "Coverage: $COVERAGE%"
+          if (( $(echo "$COVERAGE < 80" | bc -l) )); then
+            echo "❌ Coverage is below 80% threshold"
+            exit 1
+          fi
+          echo "✅ Coverage meets 80% threshold"

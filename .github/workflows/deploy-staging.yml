@@ -1,0 +1,118 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+jobs:
+  deploy-backend-staging:
+    name: Deploy Backend to Staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: staging
+      url: https://api-staging.stopfra.com
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: backend
+        run: npm ci --production
+
+      - name: Build TypeScript
+        working-directory: backend
+        run: npx tsc
+
+      - name: Deploy to staging server
+        uses: easingthemes/ssh-deploy@main
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+          REMOTE_HOST: ${{ secrets.STAGING_HOST }}
+          REMOTE_USER: ${{ secrets.STAGING_USER }}
+          SOURCE: "backend/"
+          TARGET: "/var/www/stopfra-api-staging"
+          EXCLUDE: "/node_modules/, /coverage/, /.env, /.git/"
+          SCRIPT_BEFORE: |
+            echo "Stopping staging backend..."
+            pm2 stop stopfra-api-staging || true
+          SCRIPT_AFTER: |
+            cd /var/www/stopfra-api-staging
+            npm ci --production
+            npm run db:migrate
+            pm2 restart stopfra-api-staging || pm2 start npm --name "stopfra-api-staging" -- start
+            pm2 save
+
+      - name: Health check
+        run: |
+          sleep 10
+          curl -f https://api-staging.stopfra.com/health || exit 1
+
+      - name: Notify deployment
+        uses: 8398a7/action-slack@v3
+        if: always()
+        with:
+          status: ${{ job.status }}
+          text: 'Backend deployment to staging: ${{ job.status }}'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+
+  deploy-frontend-staging:
+    name: Deploy Frontend to Staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: staging
+      url: https://staging.stopfra.com
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+          cache-dependency-path: fraud-risk-app-main/package-lock.json
+
+      - name: Install dependencies
+        working-directory: fraud-risk-app-main
+        run: npm ci
+
+      - name: Build web app
+        working-directory: fraud-risk-app-main
+        run: npx expo export:web
+        env:
+          EXPO_PUBLIC_API_URL: https://api-staging.stopfra.com
+          NODE_ENV: production
+
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          working-directory: ./fraud-risk-app-main/dist
+          scope: ${{ secrets.VERCEL_ORG_ID }}
+          alias-domains: staging.stopfra.com
+
+      - name: Notify deployment
+        uses: 8398a7/action-slack@v3
+        if: always()
+        with:
+          status: ${{ job.status }}
+          text: 'Frontend deployment to staging: ${{ job.status }}'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
