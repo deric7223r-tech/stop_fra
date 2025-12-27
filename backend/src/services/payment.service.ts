@@ -10,6 +10,7 @@ type Package = typeof packages.$inferSelect;
 
 export interface CreatePurchaseInput {
   organisationId: string;
+  assessmentId: string;
   packageId: string;
   userId: string;
 }
@@ -49,26 +50,26 @@ export class PaymentService {
    * Get recommended package based on organisation size
    */
   async getRecommendedPackage(organisationSize: string): Promise<Package> {
-    let recommendedTier = 1;
+    let recommendedType: 'health-check' | 'with-awareness' | 'with-dashboard' = 'health-check';
 
     switch (organisationSize) {
       case 'small': // 1-50 employees
-        recommendedTier = 1; // Basic Health Check
+        recommendedType = 'health-check'; // Basic Health Check
         break;
       case 'medium': // 51-250 employees
-        recommendedTier = 2; // Health Check + Training
+        recommendedType = 'with-awareness'; // Health Check + Training
         break;
       case 'large': // 251+ employees
-        recommendedTier = 3; // Full Dashboard
+        recommendedType = 'with-dashboard'; // Full Dashboard
         break;
       default:
-        recommendedTier = 1;
+        recommendedType = 'health-check';
     }
 
     const [pkg] = await db
       .select()
       .from(packages)
-      .where(eq(packages.tier, recommendedTier))
+      .where(eq(packages.packageType, recommendedType))
       .limit(1);
 
     if (!pkg) {
@@ -85,7 +86,7 @@ export class PaymentService {
     purchase: Purchase;
     clientSecret: string;
   }> {
-    const { organisationId, packageId, userId } = input;
+    const { organisationId, assessmentId, packageId, userId } = input;
 
     // Get package details
     const [pkg] = await db.select().from(packages).where(eq(packages.packageId, packageId)).limit(1);
@@ -107,10 +108,11 @@ export class PaymentService {
 
     // Create Stripe Payment Intent
     const paymentIntent = await this.stripe.paymentIntents.create({
-      amount: Math.round(pkg.price * 100), // Convert to pence
+      amount: Math.round(parseFloat(pkg.price) * 100), // Convert to pence
       currency: 'gbp',
       metadata: {
         organisationId,
+        assessmentId,
         packageId,
         packageName: pkg.name,
         organisationName: org.name,
@@ -123,12 +125,12 @@ export class PaymentService {
       .insert(purchases)
       .values({
         organisationId,
+        assessmentId,
         packageId,
-        purchasedBy: userId,
         amount: pkg.price,
         currency: 'GBP',
         status: 'pending',
-        stripePaymentIntentId: paymentIntent.id,
+        transactionReference: paymentIntent.id,
       })
       .returning();
 
@@ -155,7 +157,7 @@ export class PaymentService {
       throw new Error('PURCHASE_NOT_FOUND');
     }
 
-    if (purchase.status === 'completed') {
+    if (purchase.status === 'success') {
       return purchase; // Already confirmed
     }
 
@@ -181,8 +183,7 @@ export class PaymentService {
     const [updatedPurchase] = await db
       .update(purchases)
       .set({
-        status: 'completed',
-        paidAt: new Date(),
+        status: 'success',
         updatedAt: new Date(),
       })
       .where(eq(purchases.purchaseId, purchaseId))
@@ -192,16 +193,17 @@ export class PaymentService {
     await db
       .update(organisations)
       .set({
-        packageType: pkg.tier === 1 ? 'basic' : pkg.tier === 2 ? 'training' : 'full',
+        packageType: pkg.packageType,
         updatedAt: new Date(),
       })
       .where(eq(organisations.organisationId, purchase.organisationId));
 
     // Allocate key-passes based on package
-    if (pkg.keypassesIncluded > 0) {
+    const keypassCount = pkg.maxKeypassesDefault || 0;
+    if (keypassCount > 0) {
       await this.keypassService.allocateKeypasses({
         organisationId: purchase.organisationId,
-        quantity: pkg.keypassesIncluded,
+        quantity: keypassCount,
         expiryDays: 90, // 3 months expiry
       });
     }
@@ -267,7 +269,7 @@ export class PaymentService {
         const [purchase] = await db
           .select()
           .from(purchases)
-          .where(eq(purchases.stripePaymentIntentId, paymentIntent.id))
+          .where(eq(purchases.transactionReference, paymentIntent.id))
           .limit(1);
 
         if (purchase && purchase.status === 'pending') {
@@ -290,7 +292,7 @@ export class PaymentService {
             status: 'failed',
             updatedAt: new Date(),
           })
-          .where(eq(purchases.stripePaymentIntentId, paymentIntent.id));
+          .where(eq(purchases.transactionReference, paymentIntent.id));
         break;
       }
 
@@ -315,17 +317,17 @@ export class PaymentService {
       throw new Error('PURCHASE_NOT_FOUND');
     }
 
-    if (purchase.status !== 'completed') {
+    if (purchase.status !== 'success') {
       throw new Error('PURCHASE_NOT_COMPLETED');
     }
 
-    if (!purchase.stripePaymentIntentId) {
+    if (!purchase.transactionReference) {
       throw new Error('NO_PAYMENT_INTENT');
     }
 
     // Create refund in Stripe
     const refund = await this.stripe.refunds.create({
-      payment_intent: purchase.stripePaymentIntentId,
+      payment_intent: purchase.transactionReference,
       reason: reason === 'fraudulent' ? 'fraudulent' : 'requested_by_customer',
     });
 

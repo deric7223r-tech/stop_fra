@@ -51,13 +51,15 @@ export class RiskScoringService {
         assessmentId,
         riskIdCode: factor.riskIdCode,
         title: factor.title,
-        category: factor.category,
+        description: null,
+        area: factor.category || 'General',
         impact: factor.impact,
         likelihood: factor.likelihood,
         inherentScore,
         residualScore,
         controlStrength: factor.controlStrength,
         priority,
+        suggestedOwner: null,
       });
     }
 

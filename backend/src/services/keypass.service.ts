@@ -183,17 +183,23 @@ export class KeypassService {
     organisationId: string,
     status?: 'unused' | 'used' | 'expired'
   ): Promise<Keypass[]> {
-    let query = db.select().from(keypasses).where(eq(keypasses.organisationId, organisationId));
-
     if (status) {
-      query = query.where(
-        and(eq(keypasses.organisationId, organisationId), eq(keypasses.status, status))
-      );
+      // Query with status filter
+      const results = await db
+        .select()
+        .from(keypasses)
+        .where(
+          and(eq(keypasses.organisationId, organisationId), eq(keypasses.status, status))
+        );
+      return results;
+    } else {
+      // Query without status filter
+      const results = await db
+        .select()
+        .from(keypasses)
+        .where(eq(keypasses.organisationId, organisationId));
+      return results;
     }
-
-    const results = await query;
-
-    return results;
   }
 
   /**

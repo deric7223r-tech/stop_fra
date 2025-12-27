@@ -4,6 +4,7 @@ import { PaymentService } from '../services/payment.service';
 
 const createPurchaseSchema = z.object({
   organisationId: z.string().uuid(),
+  assessmentId: z.string().uuid(),
   packageId: z.string().uuid(),
 });
 
