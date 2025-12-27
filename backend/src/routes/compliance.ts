@@ -180,11 +180,11 @@ compliance.get('/audit-logs', async (c) => {
     const limit = parseInt(c.req.query('limit') || '100');
 
     // Query audit logs
-    const logs = await AuditLogger.queryLogs({
+    const logs = await AuditLogger.query({
       organisationId,
       startDate,
       endDate,
-      eventType,
+      eventType: eventType as any,
       severity: severity as any,
       limit,
     });

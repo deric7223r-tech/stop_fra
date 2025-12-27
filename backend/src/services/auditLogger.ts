@@ -5,7 +5,7 @@
  * Complies with GovS-013 and ECCTA 2023 requirements
  */
 
-import { db } from '../db/connection';
+import { db, sql as rawSql } from '../db/connection';
 
 export enum AuditEventType {
   // Authentication Events
@@ -53,6 +53,9 @@ export enum AuditEventType {
   SYSTEM_CONFIG_CHANGE = 'system.config_change',
   SYSTEM_ERROR = 'system.error',
   SYSTEM_BACKUP = 'system.backup',
+
+  // Compliance Events
+  COMPLIANCE_REPORT = 'compliance.report',
 }
 
 export enum AuditSeverity {
@@ -81,8 +84,7 @@ export class AuditLogger {
    */
   static async log(entry: AuditLogEntry): Promise<void> {
     try {
-      await db.query(
-        `INSERT INTO audit_logs (
+      await rawSql`INSERT INTO audit_logs (
           event_type,
           user_id,
           organisation_id,
@@ -93,20 +95,16 @@ export class AuditLogger {
           success,
           error_message,
           created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-        [
-          entry.eventType,
-          entry.userId || null,
-          entry.organisationId || null,
-          entry.severity,
-          entry.ipAddress || null,
-          entry.userAgent || null,
-          JSON.stringify(entry.details),
-          entry.success,
-          entry.errorMessage || null,
-          entry.timestamp || new Date(),
-        ]
-      );
+        ) VALUES (${entry.eventType}, ${entry.userId || null},
+          ${entry.organisationId || null},
+          ${entry.severity},
+          ${entry.ipAddress || null},
+          ${entry.userAgent || null},
+          ${JSON.stringify(entry.details)},
+          ${entry.success},
+          ${entry.errorMessage || null},
+          ${entry.timestamp || new Date()}
+        )`;
 
       // Log to console in development
       if (process.env.NODE_ENV !== 'production') {
@@ -296,15 +294,11 @@ export class AuditLogger {
     const limit = filters.limit || 100;
     const offset = filters.offset || 0;
 
-    const result = await db.query(
-      `SELECT * FROM audit_logs
-       ${whereClause}
-       ORDER BY created_at DESC
-       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
-      [...params, limit, offset]
-    );
+    // Build dynamic query using postgres.js
+    const query = `SELECT * FROM audit_logs ${whereClause} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`;
+    const result = await rawSql.unsafe(query, params);
 
-    return result.rows;
+    return result;
   }
 
   /**

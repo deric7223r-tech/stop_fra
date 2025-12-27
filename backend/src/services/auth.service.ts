@@ -43,13 +43,13 @@ export class AuthService {
     const accessToken = jwt.sign(
       payload,
       this.ACCESS_TOKEN_SECRET,
-      { expiresIn: this.ACCESS_TOKEN_EXPIRY }
+      { expiresIn: this.ACCESS_TOKEN_EXPIRY } as jwt.SignOptions
     );
 
     const refreshToken = jwt.sign(
       { ...payload, tokenType: 'refresh' },
       this.REFRESH_TOKEN_SECRET,
-      { expiresIn: this.REFRESH_TOKEN_EXPIRY }
+      { expiresIn: this.REFRESH_TOKEN_EXPIRY } as jwt.SignOptions
     );
 
     return { accessToken, refreshToken };

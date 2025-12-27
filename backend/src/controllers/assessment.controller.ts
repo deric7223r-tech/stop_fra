@@ -103,7 +103,7 @@ export class AssessmentController {
         assessmentId,
         user.userId,
         user.role,
-        user.organisationId
+        user.organisationId ?? undefined
       );
 
       if (!assessment) {
@@ -171,7 +171,7 @@ export class AssessmentController {
         orgId,
         user.userId,
         user.role,
-        user.organisationId
+        user.organisationId ?? undefined
       );
 
       return c.json({
@@ -225,7 +225,7 @@ export class AssessmentController {
         validated,
         user.userId,
         user.role,
-        user.organisationId
+        user.organisationId ?? undefined
       );
 
       return c.json({
@@ -319,7 +319,7 @@ export class AssessmentController {
         validated,
         user.userId,
         user.role,
-        user.organisationId
+        user.organisationId ?? undefined
       );
 
       return c.json({
@@ -409,7 +409,7 @@ export class AssessmentController {
         assessmentId,
         user.userId,
         user.role,
-        user.organisationId
+        user.organisationId ?? undefined
       );
 
       return c.json({
@@ -471,7 +471,7 @@ export class AssessmentController {
         assessmentId,
         user.userId,
         user.role,
-        user.organisationId
+        user.organisationId ?? undefined
       );
 
       return c.json({

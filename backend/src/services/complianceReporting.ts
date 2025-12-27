@@ -5,8 +5,8 @@
  * Generates reports demonstrating "reasonable prevention procedures" for fraud prevention
  */
 
-import { db } from '../db/connection';
-import { AuditLogger, AuditEventType } from './auditLogger';
+import { db, sql as rawSql } from '../db/connection';
+import { AuditLogger, AuditEventType, AuditSeverity } from './auditLogger';
 import { DataRetentionService } from './dataRetention';
 
 export interface ECCTA2023Report {
@@ -181,7 +181,7 @@ export class ECCTA2023ComplianceReporter {
     await AuditLogger.log({
       eventType: AuditEventType.COMPLIANCE_REPORT,
       organisationId,
-      severity: 'info',
+      severity: AuditSeverity.INFO,
       details: {
         reportPeriod: { startDate, endDate },
         overallCompliance: complianceStatus.overallCompliance,
