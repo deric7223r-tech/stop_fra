@@ -26,8 +26,29 @@ export default function SignUpScreen() {
       return;
     }
 
+    // Validate password requirements (must match backend)
     if (!password || password.length < 8) {
       Alert.alert('Weak Password', 'Password must be at least 8 characters');
+      return;
+    }
+
+    if (!/[a-z]/.test(password)) {
+      Alert.alert('Weak Password', 'Password must contain at least one lowercase letter');
+      return;
+    }
+
+    if (!/[A-Z]/.test(password)) {
+      Alert.alert('Weak Password', 'Password must contain at least one uppercase letter');
+      return;
+    }
+
+    if (!/[0-9]/.test(password)) {
+      Alert.alert('Weak Password', 'Password must contain at least one number');
+      return;
+    }
+
+    if (!/[^a-zA-Z0-9]/.test(password)) {
+      Alert.alert('Weak Password', 'Password must contain at least one special character (!@#$%^&*)');
       return;
     }
 
@@ -105,13 +126,29 @@ export default function SignUpScreen() {
                 style={styles.input}
                 value={password}
                 onChangeText={setPassword}
-                placeholder="At least 8 characters"
+                placeholder="Min 8 chars, uppercase, number, special char"
                 placeholderTextColor={colors.govGrey3}
                 secureTextEntry
               />
             </View>
-            {password.length > 0 && password.length < 8 && (
-              <Text style={styles.hint}>Password must be at least 8 characters</Text>
+            {password.length > 0 && (
+              <View style={styles.passwordRequirements}>
+                <Text style={[styles.requirement, password.length >= 8 && styles.requirementMet]}>
+                  ✓ At least 8 characters
+                </Text>
+                <Text style={[styles.requirement, /[a-z]/.test(password) && styles.requirementMet]}>
+                  ✓ One lowercase letter
+                </Text>
+                <Text style={[styles.requirement, /[A-Z]/.test(password) && styles.requirementMet]}>
+                  ✓ One uppercase letter
+                </Text>
+                <Text style={[styles.requirement, /[0-9]/.test(password) && styles.requirementMet]}>
+                  ✓ One number
+                </Text>
+                <Text style={[styles.requirement, /[^a-zA-Z0-9]/.test(password) && styles.requirementMet]}>
+                  ✓ One special character (!@#$%^&*)
+                </Text>
+              </View>
             )}
           </View>
 
@@ -224,6 +261,18 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.warningOrange,
     marginTop: 4,
+  },
+  passwordRequirements: {
+    marginTop: 8,
+    gap: 4,
+  },
+  requirement: {
+    fontSize: 12,
+    color: colors.govGrey3,
+  },
+  requirementMet: {
+    color: colors.govGreen,
+    fontWeight: '600' as const,
   },
   termsRow: {
     flexDirection: 'row',
