@@ -5,7 +5,7 @@
  * Automated archival and deletion processes
  */
 
-import { db } from '../db/connection';
+import { db, sql as rawSql } from '../db/connection';
 import { AuditLogger, AuditEventType, AuditSeverity } from './auditLogger';
 
 export enum RetentionPolicy {
@@ -59,25 +59,24 @@ export class DataRetentionService {
 
     try {
       // Create archive table if it doesn't exist
-      await db.query(`
+      await rawSql.unsafe(`
         CREATE TABLE IF NOT EXISTS ${tableName}_archive (LIKE ${tableName} INCLUDING ALL);
       `);
 
       // Move old records to archive
-      const result = await db.query(
+      const result = await rawSql.unsafe(
         `WITH moved AS (
           DELETE FROM ${tableName}
-          WHERE created_at < $1
+          WHERE created_at < '${archiveDate.toISOString()}'
           AND id NOT IN (SELECT record_id FROM ${tableName}_archive WHERE record_id = ${tableName}.id)
           RETURNING *
         )
         INSERT INTO ${tableName}_archive
         SELECT * FROM moved
-        RETURNING id`,
-        [archiveDate]
+        RETURNING id`
       );
 
-      const archivedCount = result.rowCount || 0;
+      const archivedCount = result.length || 0;
 
       if (archivedCount > 0) {
         await AuditLogger.log({
@@ -123,14 +122,13 @@ export class DataRetentionService {
       const archived = await this.archiveOldRecords(tableName, retentionDays);
 
       // Then, delete from archive if retention period expired
-      const result = await db.query(
+      const result = await rawSql.unsafe(
         `DELETE FROM ${tableName}_archive
-         WHERE created_at < $1
-         RETURNING id`,
-        [deleteDate]
+         WHERE created_at < '${deleteDate.toISOString()}'
+         RETURNING id`
       );
 
-      const deletedCount = result.rowCount || 0;
+      const deletedCount = result.length || 0;
 
       if (deletedCount > 0) {
         await AuditLogger.log({
@@ -251,26 +249,24 @@ export class DataRetentionService {
     const retentionDays = (RetentionPolicy as any)[tableName.toUpperCase()] || 365;
 
     // Check main table
-    let result = await db.query(
-      `SELECT id, created_at FROM ${tableName} WHERE id = $1`,
-      [recordId]
+    let result = await rawSql.unsafe(
+      `SELECT id, created_at FROM ${tableName} WHERE id = '${recordId}'`
     );
 
     let archived = false;
-    if (result.rowCount === 0) {
+    if (result.length === 0) {
       // Check archive table
-      result = await db.query(
-        `SELECT id, created_at FROM ${tableName}_archive WHERE id = $1`,
-        [recordId]
+      result = await rawSql.unsafe(
+        `SELECT id, created_at FROM ${tableName}_archive WHERE id = '${recordId}'`
       );
       archived = true;
     }
 
-    if (result.rowCount === 0) {
+    if (result.length === 0) {
       return null;
     }
 
-    const record = result.rows[0];
+    const record = result[0];
     const createdAt = new Date(record.created_at);
     const deleteAt = this.calculateDeleteDate(createdAt, retentionDays);
     const daysUntilDeletion = Math.ceil(
@@ -318,18 +314,18 @@ export class DataRetentionService {
     for (const policy of policies) {
       try {
         // Count main table records
-        const mainResult = await db.query(
+        const mainResult = await rawSql.unsafe(
           `SELECT COUNT(*) as count FROM ${policy.table}`
         );
-        const mainCount = parseInt(mainResult.rows[0].count);
+        const mainCount = parseInt(mainResult[0].count);
 
         // Count archive table records
         let archiveCount = 0;
         try {
-          const archiveResult = await db.query(
+          const archiveResult = await rawSql.unsafe(
             `SELECT COUNT(*) as count FROM ${policy.table}_archive`
           );
-          archiveCount = parseInt(archiveResult.rows[0].count);
+          archiveCount = parseInt(archiveResult[0].count);
         } catch {
           // Archive table might not exist yet
         }
@@ -338,12 +334,11 @@ export class DataRetentionService {
         const deleteDate = new Date();
         deleteDate.setDate(deleteDate.getDate() - policy.days);
 
-        const expiredResult = await db.query(
+        const expiredResult = await rawSql.unsafe(
           `SELECT COUNT(*) as count FROM ${policy.table}
-           WHERE created_at < $1`,
-          [deleteDate]
+           WHERE created_at < '${deleteDate.toISOString()}'`
         );
-        const expiredCount = parseInt(expiredResult.rows[0].count);
+        const expiredCount = parseInt(expiredResult[0].count);
 
         totalRecords += mainCount;
         archivedRecords += archiveCount;

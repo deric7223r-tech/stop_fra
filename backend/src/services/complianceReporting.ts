@@ -96,16 +96,17 @@ export class ECCTA2023ComplianceReporter {
     });
 
     // Get organisation details
-    const orgResult = await db.query(
-      `SELECT id, name FROM organisations WHERE id = $1`,
-      [organisationId]
-    );
+    const orgResult = await rawSql`
+      SELECT organisation_id as id, name
+      FROM organisations
+      WHERE organisation_id = ${organisationId}
+    `;
 
-    if (orgResult.rowCount === 0) {
+    if (orgResult.length === 0) {
       throw new Error('Organisation not found');
     }
 
-    const organisation = orgResult.rows[0];
+    const organisation = orgResult[0];
 
     // Section 1: Governance & Risk Management
     const governance = await this.getGovernanceMetrics(
@@ -206,59 +207,54 @@ export class ECCTA2023ComplianceReporter {
     endDate: Date
   ) {
     // Assessments completed
-    const assessmentsResult = await db.query(
-      `SELECT COUNT(*) as count
-       FROM assessments
-       WHERE organisation_id = $1
-       AND status = 'submitted'
-       AND submitted_at BETWEEN $2 AND $3`,
-      [organisationId, startDate, endDate]
-    );
-    const assessmentsCompleted = parseInt(assessmentsResult.rows[0].count);
+    const assessmentsResult = await rawSql`
+      SELECT COUNT(*) as count
+      FROM assessments
+      WHERE organisation_id = ${organisationId}
+      AND status = 'submitted'
+      AND submitted_at BETWEEN ${startDate} AND ${endDate}
+    `;
+    const assessmentsCompleted = parseInt(assessmentsResult[0].count);
 
     // Risk register updates
-    const riskRegisterResult = await db.query(
-      `SELECT COUNT(*) as count
-       FROM risk_register_items
-       WHERE organisation_id = $1
-       AND updated_at BETWEEN $2 AND $3`,
-      [organisationId, startDate, endDate]
-    );
-    const riskRegistersUpdated = parseInt(riskRegisterResult.rows[0].count);
+    const riskRegisterResult = await rawSql`
+      SELECT COUNT(*) as count
+      FROM risk_register_items
+      WHERE organisation_id = ${organisationId}
+      AND updated_at BETWEEN ${startDate} AND ${endDate}
+    `;
+    const riskRegistersUpdated = parseInt(riskRegisterResult[0].count);
 
     // High risks identified
-    const highRisksResult = await db.query(
-      `SELECT COUNT(*) as count
-       FROM risk_register_items
-       WHERE organisation_id = $1
-       AND priority = 'high'
-       AND created_at BETWEEN $2 AND $3`,
-      [organisationId, startDate, endDate]
-    );
-    const highRisksIdentified = parseInt(highRisksResult.rows[0].count);
+    const highRisksResult = await rawSql`
+      SELECT COUNT(*) as count
+      FROM risk_register_items
+      WHERE organisation_id = ${organisationId}
+      AND priority = 'high'
+      AND created_at BETWEEN ${startDate} AND ${endDate}
+    `;
+    const highRisksIdentified = parseInt(highRisksResult[0].count);
 
     // High risks resolved (mitigated or residual score reduced below 15)
-    const highRisksResolvedResult = await db.query(
-      `SELECT COUNT(*) as count
-       FROM risk_register_items
-       WHERE organisation_id = $1
-       AND priority = 'high'
-       AND residual_risk_score < 15
-       AND updated_at BETWEEN $2 AND $3`,
-      [organisationId, startDate, endDate]
-    );
-    const highRisksResolved = parseInt(highRisksResolvedResult.rows[0].count);
+    const highRisksResolvedResult = await rawSql`
+      SELECT COUNT(*) as count
+      FROM risk_register_items
+      WHERE organisation_id = ${organisationId}
+      AND priority = 'high'
+      AND residual_risk_score < 15
+      AND updated_at BETWEEN ${startDate} AND ${endDate}
+    `;
+    const highRisksResolved = parseInt(highRisksResolvedResult[0].count);
 
     // Fraud response plans active
-    const fraudResponseResult = await db.query(
-      `SELECT COUNT(*) as count
-       FROM assessments
-       WHERE organisation_id = $1
-       AND status = 'submitted'
-       AND assessment_data->'fraudResponse' IS NOT NULL`,
-      [organisationId]
-    );
-    const fraudResponsePlansActive = parseInt(fraudResponseResult.rows[0].count) > 0;
+    const fraudResponseResult = await rawSql`
+      SELECT COUNT(*) as count
+      FROM assessments
+      WHERE organisation_id = ${organisationId}
+      AND status = 'submitted'
+      AND assessment_data->'fraudResponse' IS NOT NULL
+    `;
+    const fraudResponsePlansActive = parseInt(fraudResponseResult[0].count) > 0;
 
     return {
       assessmentsCompleted,
@@ -278,44 +274,41 @@ export class ECCTA2023ComplianceReporter {
     endDate: Date
   ) {
     // Employee assessments completed
-    const employeeAssessmentsResult = await db.query(
-      `SELECT COUNT(*) as count
-       FROM employee_assessments
-       WHERE organisation_id = $1
-       AND status = 'completed'
-       AND completed_at BETWEEN $2 AND $3`,
-      [organisationId, startDate, endDate]
-    );
+    const employeeAssessmentsResult = await rawSql`
+      SELECT COUNT(*) as count
+      FROM employee_assessments
+      WHERE organisation_id = ${organisationId}
+      AND status = 'completed'
+      AND completed_at BETWEEN ${startDate} AND ${endDate}
+    `;
     const employeeAssessmentsCompleted = parseInt(
-      employeeAssessmentsResult.rows[0].count
+      employeeAssessmentsResult[0].count
     );
 
     // Training sessions delivered (Package 2/3)
-    const trainingResult = await db.query(
-      `SELECT COUNT(*) as count
-       FROM assessments
-       WHERE organisation_id = $1
-       AND assessment_data->'trainingAwareness'->'q1' = '"yes"'
-       AND submitted_at BETWEEN $2 AND $3`,
-      [organisationId, startDate, endDate]
-    );
-    const trainingSessionsDelivered = parseInt(trainingResult.rows[0].count);
+    const trainingResult = await rawSql`
+      SELECT COUNT(*) as count
+      FROM assessments
+      WHERE organisation_id = ${organisationId}
+      AND assessment_data->'trainingAwareness'->'q1' = '"yes"'
+      AND submitted_at BETWEEN ${startDate} AND ${endDate}
+    `;
+    const trainingSessionsDelivered = parseInt(trainingResult[0].count);
 
     // Employees certified (completed training)
     const employeesCertified = employeeAssessmentsCompleted;
 
     // Controls implemented (from controls-technology module)
-    const controlsResult = await db.query(
-      `SELECT
+    const controlsResult = await rawSql`
+      SELECT
         COUNT(*) FILTER (WHERE assessment_data->'controlsTechnology'->'q1' IN ('"strong"', '"reasonable"')) as implemented,
         COUNT(*) as total
-       FROM assessments
-       WHERE organisation_id = $1
-       AND submitted_at BETWEEN $2 AND $3`,
-      [organisationId, startDate, endDate]
-    );
-    const controlsImplemented = parseInt(controlsResult.rows[0].implemented);
-    const totalAssessments = parseInt(controlsResult.rows[0].total);
+      FROM assessments
+      WHERE organisation_id = ${organisationId}
+      AND submitted_at BETWEEN ${startDate} AND ${endDate}
+    `;
+    const controlsImplemented = parseInt(controlsResult[0].implemented);
+    const totalAssessments = parseInt(controlsResult[0].total);
     const controlsEffectiveness =
       totalAssessments > 0 ? (controlsImplemented / totalAssessments) * 100 : 0;
 
@@ -337,51 +330,47 @@ export class ECCTA2023ComplianceReporter {
     endDate: Date
   ) {
     // Policy updates issued (from audit logs)
-    const policyUpdatesResult = await db.query(
-      `SELECT COUNT(*) as count
-       FROM audit_logs
-       WHERE organisation_id = $1
-       AND event_type LIKE 'policy.%'
-       AND created_at BETWEEN $2 AND $3`,
-      [organisationId, startDate, endDate]
-    );
-    const policyUpdatesIssued = parseInt(policyUpdatesResult.rows[0].count);
+    const policyUpdatesResult = await rawSql`
+      SELECT COUNT(*) as count
+      FROM audit_logs
+      WHERE organisation_id = ${organisationId}
+      AND event_type LIKE 'policy.%'
+      AND created_at BETWEEN ${startDate} AND ${endDate}
+    `;
+    const policyUpdatesIssued = parseInt(policyUpdatesResult[0].count);
 
     // Awareness training attendance (employee assessments)
-    const trainingAttendanceResult = await db.query(
-      `SELECT COUNT(*) as count
-       FROM employee_assessments
-       WHERE organisation_id = $1
-       AND status = 'completed'
-       AND completed_at BETWEEN $2 AND $3`,
-      [organisationId, startDate, endDate]
-    );
+    const trainingAttendanceResult = await rawSql`
+      SELECT COUNT(*) as count
+      FROM employee_assessments
+      WHERE organisation_id = ${organisationId}
+      AND status = 'completed'
+      AND completed_at BETWEEN ${startDate} AND ${endDate}
+    `;
     const awarenessTrainingAttendance = parseInt(
-      trainingAttendanceResult.rows[0].count
+      trainingAttendanceResult[0].count
     );
 
     // Fraud reports received (from fraud response module)
-    const fraudReportsResult = await db.query(
-      `SELECT COUNT(*) as count
-       FROM risk_register_items
-       WHERE organisation_id = $1
-       AND category = 'fraud_incident'
-       AND created_at BETWEEN $2 AND $3`,
-      [organisationId, startDate, endDate]
-    );
-    const fraudReportsReceived = parseInt(fraudReportsResult.rows[0].count);
+    const fraudReportsResult = await rawSql`
+      SELECT COUNT(*) as count
+      FROM risk_register_items
+      WHERE organisation_id = ${organisationId}
+      AND category = 'fraud_incident'
+      AND created_at BETWEEN ${startDate} AND ${endDate}
+    `;
+    const fraudReportsReceived = parseInt(fraudReportsResult[0].count);
 
     // Whistleblowing cases handled
-    const whistleblowingResult = await db.query(
-      `SELECT COUNT(*) as count
-       FROM risk_register_items
-       WHERE organisation_id = $1
-       AND category = 'whistleblowing'
-       AND created_at BETWEEN $2 AND $3`,
-      [organisationId, startDate, endDate]
-    );
+    const whistleblowingResult = await rawSql`
+      SELECT COUNT(*) as count
+      FROM risk_register_items
+      WHERE organisation_id = ${organisationId}
+      AND category = 'whistleblowing'
+      AND created_at BETWEEN ${startDate} AND ${endDate}
+    `;
     const whistleblowingCasesHandled = parseInt(
-      whistleblowingResult.rows[0].count
+      whistleblowingResult[0].count
     );
 
     return {
@@ -401,50 +390,46 @@ export class ECCTA2023ComplianceReporter {
     endDate: Date
   ) {
     // Audit logs recorded
-    const auditLogsResult = await db.query(
-      `SELECT COUNT(*) as count
-       FROM audit_logs
-       WHERE organisation_id = $1
-       AND created_at BETWEEN $2 AND $3`,
-      [organisationId, startDate, endDate]
-    );
-    const auditLogsRecorded = parseInt(auditLogsResult.rows[0].count);
+    const auditLogsResult = await rawSql`
+      SELECT COUNT(*) as count
+      FROM audit_logs
+      WHERE organisation_id = ${organisationId}
+      AND created_at BETWEEN ${startDate} AND ${endDate}
+    `;
+    const auditLogsRecorded = parseInt(auditLogsResult[0].count);
 
     // Security incidents
-    const securityIncidentsResult = await db.query(
-      `SELECT COUNT(*) as count
-       FROM audit_logs
-       WHERE organisation_id = $1
-       AND severity IN ('error', 'critical')
-       AND event_type LIKE 'security.%'
-       AND created_at BETWEEN $2 AND $3`,
-      [organisationId, startDate, endDate]
-    );
-    const securityIncidents = parseInt(securityIncidentsResult.rows[0].count);
+    const securityIncidentsResult = await rawSql`
+      SELECT COUNT(*) as count
+      FROM audit_logs
+      WHERE organisation_id = ${organisationId}
+      AND severity IN ('error', 'critical')
+      AND event_type LIKE 'security.%'
+      AND created_at BETWEEN ${startDate} AND ${endDate}
+    `;
+    const securityIncidents = parseInt(securityIncidentsResult[0].count);
 
     // Data access reviews
-    const dataAccessReviewsResult = await db.query(
-      `SELECT COUNT(*) as count
-       FROM audit_logs
-       WHERE organisation_id = $1
-       AND event_type = 'data.exported'
-       AND created_at BETWEEN $2 AND $3`,
-      [organisationId, startDate, endDate]
-    );
-    const dataAccessReviews = parseInt(dataAccessReviewsResult.rows[0].count);
+    const dataAccessReviewsResult = await rawSql`
+      SELECT COUNT(*) as count
+      FROM audit_logs
+      WHERE organisation_id = ${organisationId}
+      AND event_type = 'data.exported'
+      AND created_at BETWEEN ${startDate} AND ${endDate}
+    `;
+    const dataAccessReviews = parseInt(dataAccessReviewsResult[0].count);
 
     // Compliance reviews conducted
-    const complianceReviewsResult = await db.query(
-      `SELECT COUNT(*) as count
-       FROM assessments
-       WHERE organisation_id = $1
-       AND status = 'submitted'
-       AND assessment_data->'complianceMapping' IS NOT NULL
-       AND submitted_at BETWEEN $2 AND $3`,
-      [organisationId, startDate, endDate]
-    );
+    const complianceReviewsResult = await rawSql`
+      SELECT COUNT(*) as count
+      FROM assessments
+      WHERE organisation_id = ${organisationId}
+      AND status = 'submitted'
+      AND assessment_data->'complianceMapping' IS NOT NULL
+      AND submitted_at BETWEEN ${startDate} AND ${endDate}
+    `;
     const complianceReviewsConducted = parseInt(
-      complianceReviewsResult.rows[0].count
+      complianceReviewsResult[0].count
     );
 
     return {
@@ -464,37 +449,35 @@ export class ECCTA2023ComplianceReporter {
     endDate: Date
   ) {
     // Average inherent and residual risk
-    const riskScoresResult = await db.query(
-      `SELECT
+    const riskScoresResult = await rawSql`
+      SELECT
         AVG(inherent_risk_score) as avg_inherent,
         AVG(residual_risk_score) as avg_residual
-       FROM risk_register_items
-       WHERE organisation_id = $1
-       AND created_at BETWEEN $2 AND $3`,
-      [organisationId, startDate, endDate]
-    );
+      FROM risk_register_items
+      WHERE organisation_id = ${organisationId}
+      AND created_at BETWEEN ${startDate} AND ${endDate}
+    `;
 
-    const avgInherent = parseFloat(riskScoresResult.rows[0].avg_inherent) || 0;
-    const avgResidual = parseFloat(riskScoresResult.rows[0].avg_residual) || 0;
+    const avgInherent = parseFloat(riskScoresResult[0].avg_inherent) || 0;
+    const avgResidual = parseFloat(riskScoresResult[0].avg_residual) || 0;
     const riskReductionPercentage =
       avgInherent > 0 ? ((avgInherent - avgResidual) / avgInherent) * 100 : 0;
 
     // Top risk categories
-    const topCategoriesResult = await db.query(
-      `SELECT
+    const topCategoriesResult = await rawSql`
+      SELECT
         category,
         COUNT(*) as count,
         AVG(residual_risk_score) as avg_score
-       FROM risk_register_items
-       WHERE organisation_id = $1
-       AND created_at BETWEEN $2 AND $3
-       GROUP BY category
-       ORDER BY count DESC
-       LIMIT 5`,
-      [organisationId, startDate, endDate]
-    );
+      FROM risk_register_items
+      WHERE organisation_id = ${organisationId}
+      AND created_at BETWEEN ${startDate} AND ${endDate}
+      GROUP BY category
+      ORDER BY count DESC
+      LIMIT 5
+    `;
 
-    const topRiskCategories = topCategoriesResult.rows.map((row) => ({
+    const topRiskCategories = topCategoriesResult.map((row: any) => ({
       category: row.category,
       count: parseInt(row.count),
       averageScore: parseFloat(row.avg_score),
