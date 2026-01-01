@@ -38,7 +38,14 @@ app.use(
         process.env.FRONTEND_URL || '',
       ];
 
-      if (!origin || allowedOrigins.some((allowed) => origin.startsWith(allowed))) {
+      // Allow Expo tunnel/direct URLs (e.g., https://gxkmpgw-anonymous-8081.exp.direct)
+      const isExpoTunnel = origin && (
+        origin.includes('.exp.direct') ||
+        origin.includes('.exp.dev') ||
+        origin.includes('localhost')
+      );
+
+      if (!origin || isExpoTunnel || allowedOrigins.some((allowed) => origin.startsWith(allowed))) {
         return origin || '*';
       }
 
