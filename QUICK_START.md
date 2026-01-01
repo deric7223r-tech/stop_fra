@@ -212,6 +212,13 @@ After running `bun run db:seed`, you'll have:
 - Package 2: Health Check + Awareness (£799)
 - Package 3: Full Dashboard (£1,299)
 
+**Stripe Test Cards:**
+- Success: `4242 4242 4242 4242`
+- 3D Secure: `4000 0027 6000 3184`
+- Decline: `4000 0000 0000 0002`
+- Expiry: Any future date (e.g., `12/34`)
+- CVC: Any 3 digits (e.g., `123`)
+
 ---
 
 ## 🎯 Running the Application
@@ -364,6 +371,98 @@ curl -X POST http://localhost:3000/api/v1/auth/login \
 
 ```bash
 curl http://localhost:3000/api/v1/packages
+```
+
+### Test 5: Payment Testing with Stripe Test Cards
+
+The platform uses Stripe for payment processing. In development/test mode, use these test cards:
+
+#### Successful Payment Cards
+
+**Standard Success:**
+```
+Card Number: 4242 4242 4242 4242
+Expiry: Any future date (e.g., 12/34)
+CVC: Any 3 digits (e.g., 123)
+ZIP: Any 5 digits (e.g., 12345)
+```
+
+**3D Secure Authentication (Success):**
+```
+Card Number: 4000 0027 6000 3184
+Expiry: Any future date
+CVC: Any 3 digits
+ZIP: Any 5 digits
+Note: Will prompt for 3D Secure authentication
+```
+
+#### Test Card for Different Scenarios
+
+**Insufficient Funds:**
+```
+Card Number: 4000 0000 0000 9995
+Result: Payment declined (insufficient_funds)
+```
+
+**Generic Decline:**
+```
+Card Number: 4000 0000 0000 0002
+Result: Payment declined (generic_decline)
+```
+
+**Expired Card:**
+```
+Card Number: 4000 0000 0000 0069
+Result: Payment declined (expired_card)
+```
+
+**Incorrect CVC:**
+```
+Card Number: 4000 0000 0000 0127
+Result: Payment declined (incorrect_cvc)
+```
+
+**Processing Error:**
+```
+Card Number: 4000 0000 0000 0119
+Result: Payment declined (processing_error)
+```
+
+#### Package Pricing
+
+Test package purchases with these prices:
+
+| Package | Price | Key-Passes | Features |
+|---------|-------|------------|----------|
+| **Package 1: Health Check** | £499 | Up to 100 | Basic health check only |
+| **Package 2: With Awareness** | £799 | Up to 100 | Health check + 30-min training |
+| **Package 3: With Dashboard** | £1,299 | Up to 250 | Full dashboard + analytics |
+
+#### Testing Payment Flow
+
+1. **Login with test account**
+2. **Navigate to packages screen**
+3. **Select a package**
+4. **Enter test card details:**
+   - Card: `4242 4242 4242 4242`
+   - Expiry: `12/34`
+   - CVC: `123`
+   - ZIP: `12345`
+5. **Confirm payment**
+6. **Verify key-passes allocated**
+
+**Expected Result:**
+```json
+{
+  "success": true,
+  "data": {
+    "purchaseId": "uuid",
+    "status": "success",
+    "packageType": "with-dashboard",
+    "amount": 1299.00,
+    "keypassesAllocated": 250
+  }
+}
 ```
 
 ---
@@ -657,10 +756,16 @@ Your Stop FRA platform is now running locally and ready for development or testi
 - Email: `test-employer@example.com`
 - Password: `Test123@Pass`
 
+**Test Payment Card:**
+- Card: `4242 4242 4242 4242`
+- Expiry: `12/34`
+- CVC: `123`
+- ZIP: `12345`
+
 **Next Steps:**
 1. Test signup/login flow
 2. Complete an assessment
-3. Purchase a package
+3. Purchase a package (use test card above)
 4. Allocate key-passes
 5. View dashboard (Package 3)
 
