@@ -1,30 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ClipboardCheck, FileText, BookOpen, LayoutDashboard, LogOut, User, CheckCircle, Clock } from 'lucide-react-native';
+import { Shield, ArrowRight } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAssessment } from '@/contexts/AssessmentContext';
-import { useAuth } from '@/contexts/AuthContext';
 import colors from '@/constants/colors';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { startNewAssessment, assessment } = useAssessment();
-  const { isAuthenticated, isLoading, user, organisation, signOut } = useAuth();
+  const { startNewAssessment } = useAssessment();
   const [mounted, setMounted] = useState(false);
 
   const handleStartNew = () => {
     startNewAssessment();
     router.push('/organisation');
-  };
-
-  const handleContinue = () => {
-    router.push('/organisation');
-  };
-
-  const handleSignOut = async () => {
-    await signOut();
-    router.replace('/auth/login');
   };
 
   useEffect(() => {
@@ -34,16 +23,7 @@ export default function HomeScreen() {
     return () => clearTimeout(timer);
   }, []);
 
-  useEffect(() => {
-    if (mounted && !isLoading && !isAuthenticated) {
-      const timer = setTimeout(() => {
-        router.replace('/auth/login');
-      }, 50);
-      return () => clearTimeout(timer);
-    }
-  }, [mounted, isLoading, isAuthenticated, router]);
-
-  if (!mounted || isLoading) {
+  if (!mounted) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <LinearGradient
@@ -56,12 +36,6 @@ export default function HomeScreen() {
     );
   }
 
-  if (!isAuthenticated) {
-    return null;
-  }
-
-  const isEmployee = user?.role === 'employee';
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <LinearGradient
@@ -69,191 +43,55 @@ export default function HomeScreen() {
         style={styles.container}
       >
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          <View style={styles.header}>
-            <View style={styles.iconContainer}>
-              {isEmployee ? (
-                <User size={48} color={colors.white} strokeWidth={2} />
-              ) : (
-                <ClipboardCheck size={48} color={colors.white} strokeWidth={2} />
-              )}
-            </View>
-            <Text style={styles.title}>Fraud Risk Assessment</Text>
-            <Text style={styles.subtitle}>{isEmployee ? 'Employee Assessment' : 'Health Check'}</Text>
+          <View style={styles.heroBadge}>
+            <Shield size={16} color={colors.white} />
+            <Text style={styles.heroBadgeText}>UK GovS-013 & ECCTA 2023 Compliant</Text>
           </View>
 
-          {!isEmployee && (
-            <View style={styles.infoCard}>
-              <Text style={styles.infoText}>
-                This app helps UK organisations understand their main fraud risks and create a simple action plan.
-              </Text>
-              <View style={styles.divider} />
-              <View style={styles.bulletPoint}>
-                <Text style={styles.bullet}>•</Text>
-                <Text style={styles.bulletText}>Aligned with GovS‑013 and Fraud Prevention Standard</Text>
-              </View>
-              <View style={styles.bulletPoint}>
-                <Text style={styles.bullet}>•</Text>
-                <Text style={styles.bulletText}>Creates a structured FRA report and risk register</Text>
-              </View>
-              <View style={styles.bulletPoint}>
-                <Text style={styles.bullet}>•</Text>
-                <Text style={styles.bulletText}>Usually takes 20–30 minutes to complete</Text>
-              </View>
-            </View>
-          )}
+          <Text style={styles.heroTitle}>Fraud Risk Assessment</Text>
+          <Text style={styles.heroTitleAccent}>Made Accessible</Text>
 
-          {isEmployee && (
-            <View style={styles.infoCard}>
-              <Text style={styles.infoText}>
-                Complete your personal fraud risk assessment to help {organisation?.name || 'your organisation'} understand and manage fraud risks.
-              </Text>
-              <View style={styles.divider} />
-              <View style={styles.bulletPoint}>
-                <Text style={styles.bullet}>•</Text>
-                <Text style={styles.bulletText}>Confidential and secure assessment</Text>
-              </View>
-              <View style={styles.bulletPoint}>
-                <Text style={styles.bullet}>•</Text>
-                <Text style={styles.bulletText}>Takes approximately 15–20 minutes</Text>
-              </View>
-              <View style={styles.bulletPoint}>
-                <Text style={styles.bullet}>•</Text>
-                <Text style={styles.bulletText}>Your responses help improve organisational controls</Text>
-              </View>
-            </View>
-          )}
+          <Text style={styles.heroSubtitle}>
+            A lightweight, standards-aligned FRA for charities and organisations.{"\n"}
+            Get the evidence auditors, funders and regulators require—without the heavy consultancy price tag.
+          </Text>
 
-          {user && (
-            <View style={styles.userInfo}>
-              <Text style={styles.welcomeText}>Welcome back,</Text>
-              <Text style={styles.userName}>{user.name}</Text>
-              {isEmployee && user?.keyPassCode && (
-                <Text style={styles.userRole}>Employee • {organisation?.name || 'Unknown'}</Text>
-              )}
-            </View>
-          )}
-
-          {isEmployee && assessment.status !== 'draft' && (
-            <View style={styles.statusCard}>
-              <View style={styles.statusIconContainer}>
-                <Clock size={32} color={colors.govBlue} />
-              </View>
-              <Text style={styles.statusTitle}>Assessment Not Started</Text>
-              <Text style={styles.statusText}>You haven&apos;t started your fraud risk assessment yet. Click below to begin.</Text>
-            </View>
-          )}
-
-          {isEmployee && assessment.status === 'submitted' && (
-            <View style={[styles.statusCard, styles.statusCardComplete]}>
-              <View style={styles.statusIconContainer}>
-                <CheckCircle size={32} color="#00703c" />
-              </View>
-              <Text style={styles.statusTitle}>Assessment Completed</Text>
-              <Text style={styles.statusText}>Thank you for completing your assessment. Your responses have been submitted.</Text>
-            </View>
-          )}
-
-          <View style={styles.buttonsContainer}>
-            <Text style={styles.question}>What would you like to do today?</Text>
-
-            {isEmployee ? (
-              <>
-                <TouchableOpacity
-                  style={styles.primaryButton}
-                  onPress={handleStartNew}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.buttonIcon}>
-                    <ClipboardCheck size={24} color={colors.govBlue} />
-                  </View>
-                  <View style={styles.buttonTextContainer}>
-                    <Text style={styles.buttonTitle}>Start My Assessment</Text>
-                    <Text style={styles.buttonSubtitle}>Complete your personal fraud risk assessment</Text>
-                  </View>
-                </TouchableOpacity>
-
-                {assessment.status === 'draft' && (
-                  <TouchableOpacity
-                    style={styles.secondaryButton}
-                    onPress={handleContinue}
-                    activeOpacity={0.8}
-                  >
-                    <View style={styles.buttonIcon}>
-                      <FileText size={24} color={colors.white} />
-                    </View>
-                    <View style={styles.buttonTextContainer}>
-                      <Text style={styles.buttonTitleSecondary}>Continue My Assessment</Text>
-                      <Text style={styles.buttonSubtitleSecondary}>Resume where you left off</Text>
-                    </View>
-                  </TouchableOpacity>
-                )}
-              </>
-            ) : (
-              <>
-                <TouchableOpacity
-                  style={styles.primaryButton}
-                  onPress={handleStartNew}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.buttonIcon}>
-                    <ClipboardCheck size={24} color={colors.govBlue} />
-                  </View>
-                  <View style={styles.buttonTextContainer}>
-                    <Text style={styles.buttonTitle}>Start a new Health Check</Text>
-                    <Text style={styles.buttonSubtitle}>Begin a fresh fraud risk assessment</Text>
-                  </View>
-                </TouchableOpacity>
-
-                {assessment.status === 'draft' && (
-                  <TouchableOpacity
-                    style={styles.secondaryButton}
-                    onPress={handleContinue}
-                    activeOpacity={0.8}
-                  >
-                    <View style={styles.buttonIcon}>
-                      <FileText size={24} color={colors.white} />
-                    </View>
-                    <View style={styles.buttonTextContainer}>
-                      <Text style={styles.buttonTitleSecondary}>Continue previous assessment</Text>
-                      <Text style={styles.buttonSubtitleSecondary}>Resume your saved draft</Text>
-                    </View>
-                  </TouchableOpacity>
-                )}
-
-                {organisation?.packageType === 'with-dashboard' && (
-                  <TouchableOpacity
-                    style={styles.dashboardButton}
-                    onPress={() => router.push('/dashboard')}
-                    activeOpacity={0.8}
-                  >
-                    <View style={styles.buttonIcon}>
-                      <LayoutDashboard size={24} color={colors.govBlue} />
-                    </View>
-                    <View style={styles.buttonTextContainer}>
-                      <Text style={styles.buttonTitle}>Organisation Dashboard</Text>
-                      <Text style={styles.buttonSubtitle}>View employee assessments & key-passes</Text>
-                    </View>
-                  </TouchableOpacity>
-                )}
-              </>
-            )}
-
-            <TouchableOpacity
-              style={styles.tertiaryButton}
-              activeOpacity={0.8}
-            >
-              <BookOpen size={20} color={colors.white} />
-              <Text style={styles.tertiaryButtonText}>Learn about fraud prevention</Text>
+          <View style={styles.ctaRow}>
+            <TouchableOpacity style={styles.ctaPrimary} onPress={handleStartNew} activeOpacity={0.85}>
+              <Text style={styles.ctaPrimaryText}>Get Started</Text>
+              <ArrowRight size={18} color={colors.govBlue} />
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.signOutButton}
-              onPress={handleSignOut}
-              activeOpacity={0.8}
+              style={styles.ctaSecondary}
+              onPress={() => router.push('/packages')}
+              activeOpacity={0.85}
             >
-              <LogOut size={18} color={colors.white} />
-              <Text style={styles.signOutButtonText}>Sign Out</Text>
+              <Text style={styles.ctaSecondaryText}>View Pricing</Text>
             </TouchableOpacity>
+          </View>
+
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Why this matters</Text>
+            <Text style={styles.sectionBody}>
+              Fraud prevention is now a governance expectation. This assessment helps you document risks, controls, and priorities in a clear format aligned with UK guidance.
+            </Text>
+          </View>
+
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>What you get</Text>
+            <View style={styles.bulletPoint}>
+              <Text style={styles.bullet}>•</Text>
+              <Text style={styles.bulletText}>Structured assessment across key risk areas</Text>
+            </View>
+            <View style={styles.bulletPoint}>
+              <Text style={styles.bullet}>•</Text>
+              <Text style={styles.bulletText}>Risk register with inherent and residual scores</Text>
+            </View>
+            <View style={styles.bulletPoint}>
+              <Text style={styles.bullet}>•</Text>
+              <Text style={styles.bulletText}>Clear action priorities to strengthen controls</Text>
+            </View>
           </View>
         </ScrollView>
       </LinearGradient>
@@ -276,56 +114,106 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     padding: 20,
-    paddingTop: 40,
-    paddingBottom: 40,
+    paddingTop: 48,
+    paddingBottom: 60,
   },
-  header: {
+  heroBadge: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 32,
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
+    marginBottom: 18,
   },
-  iconContainer: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: '700' as const,
+  heroBadgeText: {
     color: colors.white,
-    textAlign: 'center',
-    marginBottom: 4,
+    opacity: 0.9,
+    fontSize: 13,
+    fontWeight: '600' as const,
   },
-  subtitle: {
-    fontSize: 24,
-    fontWeight: '500' as const,
-    color: colors.lightBlue,
-    textAlign: 'center',
+  heroTitle: {
+    fontSize: 40,
+    fontWeight: '800' as const,
+    color: colors.white,
+    letterSpacing: -0.5,
   },
-  infoCard: {
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 32,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+  heroTitleAccent: {
+    fontSize: 40,
+    fontWeight: '800' as const,
+    color: '#b38b2e',
+    letterSpacing: -0.5,
+    marginBottom: 14,
   },
-  infoText: {
+  heroSubtitle: {
     fontSize: 16,
     lineHeight: 24,
-    color: colors.govGrey1,
-    marginBottom: 16,
+    color: colors.white,
+    opacity: 0.85,
+    marginBottom: 20,
   },
-  divider: {
-    height: 1,
-    backgroundColor: colors.govGrey4,
-    marginBottom: 16,
+  ctaRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 28,
+    flexWrap: 'wrap',
+  },
+  ctaPrimary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: 12,
+    backgroundColor: colors.white,
+    minWidth: 160,
+  },
+  ctaPrimaryText: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: colors.govBlue,
+  },
+  ctaSecondary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    minWidth: 160,
+  },
+  ctaSecondaryText: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: colors.white,
+  },
+  sectionCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderRadius: 14,
+    padding: 18,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.14)',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '800' as const,
+    color: colors.white,
+    marginBottom: 10,
+  },
+  sectionBody: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.white,
+    opacity: 0.85,
   },
   bulletPoint: {
     flexDirection: 'row',
@@ -333,7 +221,7 @@ const styles = StyleSheet.create({
   },
   bullet: {
     fontSize: 16,
-    color: colors.govBlue,
+    color: colors.white,
     marginRight: 8,
     fontWeight: '700' as const,
   },
@@ -341,154 +229,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     lineHeight: 20,
-    color: colors.govGrey1,
-  },
-  buttonsContainer: {
-    gap: 16,
-  },
-  question: {
-    fontSize: 18,
-    fontWeight: '600' as const,
     color: colors.white,
-    marginBottom: 8,
-  },
-  primaryButton: {
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    padding: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  secondaryButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    borderRadius: 12,
-    padding: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: colors.white,
-  },
-  tertiaryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    gap: 8,
-  },
-  buttonIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.lightBlue,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  buttonTextContainer: {
-    flex: 1,
-  },
-  buttonTitle: {
-    fontSize: 17,
-    fontWeight: '600' as const,
-    color: colors.govBlue,
-    marginBottom: 4,
-  },
-  buttonSubtitle: {
-    fontSize: 14,
-    color: colors.govGrey2,
-  },
-  buttonTitleSecondary: {
-    fontSize: 17,
-    fontWeight: '600' as const,
-    color: colors.white,
-    marginBottom: 4,
-  },
-  buttonSubtitleSecondary: {
-    fontSize: 14,
-    color: colors.lightBlue,
-  },
-  dashboardButton: {
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    padding: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  userInfo: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 24,
-  },
-  welcomeText: {
-    fontSize: 14,
-    color: colors.lightBlue,
-    marginBottom: 4,
-  },
-  userName: {
-    fontSize: 20,
-    fontWeight: '700' as const,
-    color: colors.white,
-  },
-  userRole: {
-    fontSize: 14,
-    color: colors.lightBlue,
-    marginTop: 4,
-  },
-  statusCard: {
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 24,
-    alignItems: 'center',
-  },
-  statusCardComplete: {
-    borderWidth: 2,
-    borderColor: '#00703c',
-  },
-  statusIconContainer: {
-    marginBottom: 12,
-  },
-  statusTitle: {
-    fontSize: 18,
-    fontWeight: '700' as const,
-    color: colors.govGrey1,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  statusText: {
-    fontSize: 14,
-    color: colors.govGrey2,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  tertiaryButtonText: {
-    fontSize: 16,
-    fontWeight: '500' as const,
-    color: colors.white,
-  },
-  signOutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    gap: 8,
-    marginTop: 8,
-  },
-  signOutButtonText: {
-    fontSize: 14,
-    fontWeight: '500' as const,
-    color: colors.white,
-    opacity: 0.8,
+    opacity: 0.9,
   },
 });

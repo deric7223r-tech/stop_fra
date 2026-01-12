@@ -12,7 +12,7 @@ import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
 import { RadioOption } from '@/components/ui';
 
-describe.skip('RadioOption - SKIPPED: React Native Testing Library compatibility issue (see TEST_CONFIGURATION_ISSUE.md)', () => {
+describe('RadioOption', () => {
   const mockOnPress = jest.fn();
 
 beforeEach(() => {
