@@ -21,6 +21,7 @@ if (buildExitCode !== 0) {
   process.exit(buildExitCode);
 }
 
-// Run Node tests (JS/MJS files under test/)
-const testExitCode = await run(process.execPath, ['--test', 'test']);
+// Run Node tests (auto-discovery)
+// Note: Avoid importing compiled modules from dist/ until ESM import specifiers are fully Node-compatible.
+const testExitCode = await run(process.execPath, ['--test']);
 process.exit(testExitCode);
