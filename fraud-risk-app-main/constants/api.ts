@@ -3,17 +3,29 @@
  * Central configuration for backend API endpoints
  */
 
+import { Platform } from 'react-native';
+
 // Determine API base URL based on environment
 const getApiBaseUrl = (): string => {
+  const envUrl = process.env.EXPO_PUBLIC_API_URL;
+
   // For Expo development
   if (__DEV__) {
+    if (envUrl) {
+      return envUrl;
+    }
+
     // For iOS simulator and Android emulator
     // Use localhost for web, 10.0.2.2 for Android emulator, or your machine's IP
+    if (Platform.OS === 'android') {
+      return 'http://10.0.2.2:3000';
+    }
+
     return 'http://localhost:3000';
   }
 
   // Production API URL
-  return process.env.EXPO_PUBLIC_API_URL || 'https://api.stopfra.com';
+  return envUrl || 'https://api.stopfra.com';
 };
 
 export const API_CONFIG = {
