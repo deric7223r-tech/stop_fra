@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
-import { PaymentController } from '../controllers/payment.controller';
-import { authMiddleware, requireRole } from '../middleware/auth.middleware';
+import { PaymentController } from '../controllers/payment.controller.js';
+import { authMiddleware, requireRole } from '../middleware/auth.middleware.js';
 
 const paymentRoutes = new Hono();
 const paymentController = new PaymentController();

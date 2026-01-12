@@ -6,10 +6,10 @@
  */
 
 import { Hono } from 'hono';
-import { ECCTA2023ComplianceReporter } from '../services/complianceReporting';
-import { AuditLogger } from '../services/auditLogger';
-import { DataRetentionService } from '../services/dataRetention';
-import { authMiddleware } from '../middleware/auth.middleware';
+import { ECCTA2023ComplianceReporter } from '../services/complianceReporting.js';
+import { AuditLogger } from '../services/auditLogger.js';
+import { DataRetentionService } from '../services/dataRetention.js';
+import { authMiddleware } from '../middleware/auth.middleware.js';
 
 const compliance = new Hono();
 

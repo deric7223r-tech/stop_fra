@@ -1,6 +1,6 @@
 import { Context } from 'hono';
 import { z } from 'zod';
-import { AssessmentService } from '../services/assessment.service';
+import { AssessmentService } from '../services/assessment.service.js';
 
 const createAssessmentSchema = z.object({
   organisationId: z.string().uuid(),

@@ -1,8 +1,8 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { db, users } from '../db';
+import { db, users } from '../db/index.js';
 import { eq, and, isNull } from 'drizzle-orm';
-import { validatePassword } from '../utils/password';
+import { validatePassword } from '../utils/password.js';
 
 export interface TokenPayload {
   userId: string;

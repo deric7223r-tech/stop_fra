@@ -1,7 +1,7 @@
 import { Context } from 'hono';
 import { z } from 'zod';
-import { authService } from '../services/auth.service';
-import { db, users, organisations } from '../db';
+import { authService } from '../services/auth.service.js';
+import { db, users, organisations } from '../db/index.js';
 import { eq } from 'drizzle-orm';
 
 // Validation schemas

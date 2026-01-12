@@ -5,9 +5,9 @@
  * Generates reports demonstrating "reasonable prevention procedures" for fraud prevention
  */
 
-import { db, sql as rawSql } from '../db/connection';
-import { AuditLogger, AuditEventType, AuditSeverity } from './auditLogger';
-import { DataRetentionService } from './dataRetention';
+import { db, sql as rawSql } from '../db/connection.js';
+import { AuditLogger, AuditEventType, AuditSeverity } from './auditLogger.js';
+import { DataRetentionService } from './dataRetention.js';
 
 export interface ECCTA2023Report {
   organisationId: string;

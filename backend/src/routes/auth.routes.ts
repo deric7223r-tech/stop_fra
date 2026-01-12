@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
-import { authController } from '../controllers/auth.controller';
-import { authMiddleware } from '../middleware/auth.middleware';
-import { rateLimit } from '../middleware/rateLimit.middleware';
+import { authController } from '../controllers/auth.controller.js';
+import { authMiddleware } from '../middleware/auth.middleware.js';
+import { rateLimit } from '../middleware/rateLimit.middleware.js';
 
 const auth = new Hono();
 

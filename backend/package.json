@@ -2,6 +2,7 @@
   "name": "stop-fra-backend",
   "version": "1.0.0",
   "description": "Stop FRA Backend API - Fraud Risk Assessment Platform",
+  "type": "module",
   "main": "src/index.ts",
   "scripts": {
     "dev": "tsx watch src/index.ts",

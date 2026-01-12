@@ -1,4 +1,4 @@
-import { db, packages } from './index';
+import { db, packages } from './index.js';
 
 async function seed() {
   console.log('🌱 Seeding database...');

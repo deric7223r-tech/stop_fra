@@ -9,17 +9,17 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Import routes
-import authRoutes from './routes/auth.routes';
-import assessmentRoutes from './routes/assessment.routes';
-import keypassRoutes from './routes/keypass.routes';
-import paymentRoutes from './routes/payment.routes';
-import complianceRoutes from './routes/compliance';
+import authRoutes from './routes/auth.routes.js';
+import assessmentRoutes from './routes/assessment.routes.js';
+import keypassRoutes from './routes/keypass.routes.js';
+import paymentRoutes from './routes/payment.routes.js';
+import complianceRoutes from './routes/compliance.js';
 
 // Import audit logging middleware
-import { auditMiddleware } from './services/auditLogger';
+import { auditMiddleware } from './services/auditLogger.js';
 
 // Import data retention scheduler
-import { initializeRetentionScheduler } from './jobs/retentionScheduler';
+import { initializeRetentionScheduler } from './jobs/retentionScheduler.js';
 
 const app = new Hono();
 
@@ -29,7 +29,7 @@ app.use('*', prettyJSON());
 app.use(
   '*',
   cors({
-    origin: (origin) => {
+    origin: (origin: string | undefined) => {
       // Allow requests from these origins
       const allowedOrigins = [
         'http://localhost:19006',

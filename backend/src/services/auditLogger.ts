@@ -5,7 +5,7 @@
  * Complies with GovS-013 and ECCTA 2023 requirements
  */
 
-import { db, sql as rawSql } from '../db/connection';
+import { db, sql as rawSql } from '../db/connection.js';
 
 export enum AuditEventType {
   // Authentication Events

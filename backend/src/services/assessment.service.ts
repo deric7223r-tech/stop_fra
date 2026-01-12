@@ -1,12 +1,12 @@
 import { eq, and, desc } from 'drizzle-orm';
-import { db } from '../db';
+import { db } from '../db/index.js';
 import {
   assessments,
   assessmentAnswers,
   riskRegisterItems,
   organisations,
-} from '../db/schema';
-import { RiskScoringService } from './risk-scoring.service';
+} from '../db/schema.js';
+import { RiskScoringService } from './risk-scoring.service.js';
 
 // Infer types from schema
 type Assessment = typeof assessments.$inferSelect;

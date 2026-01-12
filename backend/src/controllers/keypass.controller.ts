@@ -1,6 +1,6 @@
 import { Context } from 'hono';
 import { z } from 'zod';
-import { KeypassService } from '../services/keypass.service';
+import { KeypassService } from '../services/keypass.service.js';
 
 const allocateKeypassesSchema = z.object({
   organisationId: z.string().uuid(),

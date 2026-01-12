@@ -5,7 +5,7 @@
  * Automatically archives old records and deletes expired records
  */
 
-import { scheduleRetentionJob } from '../services/dataRetention';
+import { scheduleRetentionJob } from '../services/dataRetention.js';
 
 /**
  * Initialize data retention scheduler

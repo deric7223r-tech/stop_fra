@@ -1,6 +1,6 @@
 import { eq, and, sql } from 'drizzle-orm';
-import { db } from '../db';
-import { keypasses, organisations, employeeAssessments } from '../db/schema';
+import { db } from '../db/index.js';
+import { keypasses, organisations, employeeAssessments } from '../db/schema.js';
 import crypto from 'crypto';
 
 // Infer type from schema

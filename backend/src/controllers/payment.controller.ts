@@ -1,6 +1,6 @@
 import { Context } from 'hono';
 import { z } from 'zod';
-import { PaymentService } from '../services/payment.service';
+import { PaymentService } from '../services/payment.service.js';
 
 const createPurchaseSchema = z.object({
   organisationId: z.string().uuid(),

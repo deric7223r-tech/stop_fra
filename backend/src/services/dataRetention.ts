@@ -5,8 +5,8 @@
  * Automated archival and deletion processes
  */
 
-import { db, sql as rawSql } from '../db/connection';
-import { AuditLogger, AuditEventType, AuditSeverity } from './auditLogger';
+import { db, sql as rawSql } from '../db/connection.js';
+import { AuditLogger, AuditEventType, AuditSeverity } from './auditLogger.js';
 
 export enum RetentionPolicy {
   // 6 years for fraud-related records (UK requirement)

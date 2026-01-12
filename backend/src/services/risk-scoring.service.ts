@@ -1,7 +1,7 @@
-import { riskRegisterItems } from '../db/schema';
+import { riskRegisterItems } from '../db/schema.js';
 
 // Infer type from schema
-type RiskRegisterItem = typeof riskRegisterItems.$inferSelect;
+type RiskRegisterItemInsert = typeof riskRegisterItems.$inferInsert;
 
 export interface RiskFactor {
   riskIdCode: string;
@@ -19,9 +19,9 @@ export class RiskScoringService {
   calculateRiskScores(
     assessmentId: string,
     answers: Record<string, any>
-  ): Omit<RiskRegisterItem, 'riskItemId' | 'createdAt' | 'updatedAt'>[] {
+  ): RiskRegisterItemInsert[] {
     const riskFactors = this.extractRiskFactors(answers);
-    const riskItems: Omit<RiskRegisterItem, 'riskItemId' | 'createdAt' | 'updatedAt'>[] = [];
+    const riskItems: RiskRegisterItemInsert[] = [];
 
     for (const factor of riskFactors) {
       // Calculate inherent risk score (Impact × Likelihood)

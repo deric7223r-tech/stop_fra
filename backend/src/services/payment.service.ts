@@ -1,8 +1,8 @@
 import Stripe from 'stripe';
 import { eq } from 'drizzle-orm';
-import { db } from '../db';
-import { purchases, packages, organisations } from '../db/schema';
-import { KeypassService } from './keypass.service';
+import { db } from '../db/index.js';
+import { purchases, packages, organisations } from '../db/schema.js';
+import { KeypassService } from './keypass.service.js';
 
 // Infer types from schema
 type Purchase = typeof purchases.$inferSelect;

@@ -1,5 +1,5 @@
 import { Context, Next } from 'hono';
-import { authService, TokenPayload } from '../services/auth.service';
+import { authService, TokenPayload } from '../services/auth.service.js';
 
 declare module 'hono' {
   interface ContextVariableMap {

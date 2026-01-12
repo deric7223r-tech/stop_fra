@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
-import { AssessmentController } from '../controllers/assessment.controller';
-import { authMiddleware, requireRole } from '../middleware/auth.middleware';
+import { AssessmentController } from '../controllers/assessment.controller.js';
+import { authMiddleware, requireRole } from '../middleware/auth.middleware.js';
 
 const assessmentRoutes = new Hono();
 const assessmentController = new AssessmentController();

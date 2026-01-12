@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
-import { KeypassController } from '../controllers/keypass.controller';
-import { authMiddleware, requireRole } from '../middleware/auth.middleware';
-import { rateLimit } from '../middleware/rateLimit.middleware';
+import { KeypassController } from '../controllers/keypass.controller.js';
+import { authMiddleware, requireRole } from '../middleware/auth.middleware.js';
+import { rateLimit } from '../middleware/rateLimit.middleware.js';
 
 const keypassRoutes = new Hono();
 const keypassController = new KeypassController();
