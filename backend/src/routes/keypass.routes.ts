@@ -1,13 +1,22 @@
 import { Hono } from 'hono';
 import { KeypassController } from '../controllers/keypass.controller';
 import { authMiddleware, requireRole } from '../middleware/auth.middleware';
+import { rateLimit } from '../middleware/rateLimit.middleware';
 
 const keypassRoutes = new Hono();
 const keypassController = new KeypassController();
 
 // Public endpoints (no authentication required)
-keypassRoutes.post('/validate', keypassController.validateKeypass);
-keypassRoutes.post('/use', keypassController.useKeypass);
+keypassRoutes.post(
+  '/validate',
+  rateLimit({ windowMs: 60_000, max: 10, keyPrefix: 'keypass:validate' }),
+  keypassController.validateKeypass
+);
+keypassRoutes.post(
+  '/use',
+  rateLimit({ windowMs: 60_000, max: 10, keyPrefix: 'keypass:use' }),
+  keypassController.useKeypass
+);
 
 // Protected endpoints (require authentication)
 keypassRoutes.use('*', authMiddleware);
